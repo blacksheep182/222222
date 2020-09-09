@@ -1,0 +1,805 @@
+using namespace std;
+#include <bits/stdc++.h>
+#include <ctime>
+#define random(a,b) (rand()%(b-a+1))+a		
+
+ifstream infile,intp,inm,inday,injuan1;
+ofstream outfile,outtp,outm,outday,outjuan;
+
+int bjuan=0,ojuan=0,aveb=0,aveo=0,remb=0,remo=0;				//������Ȧ�Ĳ��� 
+int ttop=0,ttbp=0;
+int money=0;
+int selln=0;
+int day=0;
+int sellb=0,sellw=0,sellf=0;
+int selltime=1,buytime=1;
+
+class juan;
+class pig
+{
+	private:	
+		int pigtype;											//0Ϊ������1Ϊ������2Ϊ���� 
+		double m;
+		int growthday=0;
+		double growthm;
+		int juannum;
+		int pignum;
+	public:
+		pig *next=NULL;
+		pig(int i,double j=0,int k=0)												//���캯��ȷ����������� 
+		{														//i��ʾ��������
+			pigtype=i;
+			if(j==0)
+			{
+				double a=random(200,500);							//�����ȡ���� 
+				m=a/10;
+			} 
+			else m=j;	
+			growthday=k;
+		}	
+		void nowm();											//���㵱ǰ���� !!	
+		bool oksell();									//���Ƿ������
+		void injuannum(int);
+		void print(); 
+		int getjuannum();
+		void inpignum(int);
+		int getpignum();
+		double	getm(){return m;}
+		int gettpye(){return pigtype;}
+		int getday(){return growthday;}
+		void out();
+		~pig()
+		{
+			if(pigtype==0) 
+			{	
+				money+=15;
+				ttbp-=1;
+			}
+		
+			if(pigtype==1) 
+			{
+				money+=6;
+				ttop-=1;
+			}
+			if(pigtype==2) 
+			{	
+				money+=7; 
+				ttop-=1;
+			}
+			selln++;
+		}
+};
+void pig::nowm()
+{
+	double a=random(0,12);
+	growthm=a/10;
+	m+=growthm;
+	growthday+=1;
+}
+bool pig::oksell()
+{
+	if(growthday>360||m>75)
+	return 1;
+	else 
+	return 0;
+}
+void pig::injuannum(int n)
+{
+	juannum=n;
+}
+int pig::getjuannum()
+{
+	return juannum;
+}
+void pig::inpignum(int n)
+{
+	pignum=n;
+}
+int pig::getpignum()
+{
+	return pignum;
+}
+void pig::print()
+{
+	cout<<m<<"\t";
+	if(pigtype==0) cout<<"black";
+	if(pigtype==1) cout<<"white";
+	if(pigtype==2) cout<<"flower";
+	cout<<"\t"<<growthday<<endl;
+}
+void pig::out() 
+{
+	outtp<<pigtype<<endl;
+	outday<<growthday<<endl;
+	outm<<m<<endl;
+}
+
+
+class juan
+{
+	private:
+		int number;
+		int type;
+		int count=0;
+		int pigcount;
+	public:
+		pig *head=NULL;
+		void print();
+		int getcount();
+		int incount(int);
+		void couadd();
+		void cousub();
+		int gettype();
+		int changetype(int);
+		void intype(int i);
+};
+void juan::print()
+{
+	pig *target=this->head;
+	cout<<count<<"\t";
+	if(type==0) cout<<"black"<<endl;
+	if(type==1) cout<<"other"<<endl;
+	for(int i=0;i<count;i++)
+	{
+		target->print();
+		target=target->next;
+	}
+}
+void juan::couadd()
+{
+	count+=1;
+}
+void juan::cousub()
+{
+	count-=1;
+} 
+int juan::getcount()
+{
+	return count;
+}
+int juan::incount(int c)
+{
+	count=c;
+	return count;
+}
+int juan::changetype(int i)
+{
+	type=i;
+	return type;
+}
+int juan::gettype()
+{
+	return type;
+}
+void juan::intype(int i)
+{
+	type=i;
+}
+
+juan zhujuan[100];
+
+
+
+
+
+pig *creatb(int num)												//numΪ���������������������������� 
+{
+	pig *head=NULL,*end=NULL;
+	for(int i=0;i<num;i++)
+	{
+		pig *p=new pig(0);
+		p->next=NULL;
+		if(head==NULL)
+		{
+			head=p;
+			end=p;
+		}
+		else
+		{
+			end->next=p;
+			end=p;
+		}
+	}	
+	end->next=NULL;
+	return head;
+}
+
+
+pig *creato(int num1,int num2)										//�������˺����������,num1Ϊ����������num2Ϊ�������� 
+{
+	pig *head=NULL,*end=NULL;
+	for(int i=0;i<num1+num2;i++)
+	{
+		if(i<num1)
+		{
+			pig *p=new pig(1);
+			p->next=NULL;
+			if(head==NULL)
+			{
+				head=p;
+				end=p;
+			}
+			else
+			{
+				end->next=p;
+				end=p;
+			}	
+		}
+		else
+		{
+			pig *q=new pig(2);
+			q->next=NULL;
+			end->next=q;
+			end=q;
+		}
+	}
+	end->next=NULL;
+	return head;
+} 
+
+
+void finjuan(int blackp,int whitep,int flowerp,juan zjuan[])
+{
+			bjuan=((blackp*100)/(blackp+whitep+flowerp));							//����Ҫ���ٺ���Ȧ 
+			if(bjuan==0&&blackp!=0) bjuan=1;									//���ٱ�֤һ������Ȧ 
+			ojuan=100-bjuan;													//Ҫ����������Ȧ 		
+			aveb=blackp/bjuan+1;
+			remb=blackp%bjuan;
+			aveo=(whitep+flowerp)/ojuan+1;
+			remo=(whitep+flowerp)%ojuan;										//���Ʒ�����Ȧ 
+		cout<<"juan"<<bjuan<<" "<<ojuan<<endl;
+		cout<<"ave"<<aveb<<" "<<aveo<<endl;
+		cout<<"rem"<<remb<<" "<<remo<<endl;
+		pig *bpig=NULL;
+		bpig=creatb(blackp);
+		pig *opig=NULL;
+		opig=creato(whitep,flowerp);
+		pig *logo=bpig,*logo1=bpig;
+		int juannum=0;
+		int bjuan1=0,ojuan1=0;															//����Ȧ 
+		if(blackp+whitep+flowerp<100)
+			{
+				bjuan1=blackp;
+				ojuan1=whitep+flowerp;
+			}
+		else 
+			{
+				bjuan1=bjuan;
+				ojuan1=ojuan;
+			}
+		for(int i=juannum;juannum<remb+i;juannum++)
+		{
+			zhujuan[juannum].head=logo;
+			zhujuan[juannum].incount((aveb));
+			for(int j=0;j<(aveb);j++)
+			{
+				logo1=logo;
+				logo=logo->next;
+				logo1->injuannum(juannum);
+				logo1->inpignum(j+1);
+			}
+			logo1->next=NULL;
+			logo1=logo;
+		} 
+		for(int i=juannum;juannum<(bjuan1-remb+i);juannum++)
+		{
+			zhujuan[juannum].head=logo;
+			zhujuan[juannum].incount(aveb-1);
+			for(int j=0;j<aveb-1;j++)
+			{
+				logo1=logo;
+				logo=logo->next;
+				logo1->injuannum(juannum);
+				logo1->inpignum(j+1);
+			}
+			logo1->next=NULL;
+			logo1=logo;
+		}
+		juannum=bjuan;
+		logo=opig;logo1=opig;
+		for(int i=juannum;juannum<remo+i;juannum++)
+		{
+			zhujuan[juannum].head=logo;
+			zhujuan[juannum].intype(1);
+			zhujuan[juannum].incount((aveo));
+			for(int j=0;j<(aveo);j++)
+			{
+				logo1=logo;
+				logo=logo->next;
+				logo1->injuannum(juannum);
+				logo1->inpignum(j+1);
+			}
+			logo1->next=NULL;
+			logo1=logo;
+		} 
+		for(int i=juannum;juannum<(ojuan1-remo+i);juannum++)
+		{
+			zhujuan[juannum].head=logo;
+			zhujuan[juannum].intype(1);
+			zhujuan[juannum].incount(aveo-1);
+			for(int j=0;j<aveo-1;j++)
+			{
+				logo1=logo;
+				logo=logo->next;
+				logo1->injuannum(juannum);
+				logo1->inpignum(j+1);
+			}
+			logo1->next=NULL;
+			logo1=logo;
+		}
+}
+
+
+void pigin(int nowc,int ty,int i,double m=0,int day=0)///////!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+{
+	if(nowc==0)
+	{
+		pig *pty1=new pig(ty,m,day);			
+		pty1->injuannum(i);
+		pty1->inpignum(1);
+		pty1->next=NULL;
+		zhujuan[i].head=pty1;
+		zhujuan[i].head->next=NULL;
+	}
+	else
+	{	
+		pig *pty=new pig(ty,m,day);
+		pty->next=NULL;
+		pty->injuannum(i);
+		pty->inpignum(nowc+1);
+		pig *p=zhujuan[i].head,*q=zhujuan[i].head;
+		for(int i=0;i<nowc;i++)
+		{
+			p=q;
+			q=q->next;
+		}
+		p->next=pty;
+	}		
+}
+
+
+void injuan(int blackp,int whitep,int flowerp)//////!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+{
+		remb=ttbp%bjuan;
+		remo=ttop%ojuan;
+		aveb=ttbp/bjuan+1;
+		aveo=ttop/ojuan+1;
+		int nowc=0,cc=0,tp=1;	
+		for(int i=0;i<bjuan;i++)
+		{						
+			if(i==remb) aveb-=1; 
+			nowc=zhujuan[i].getcount();	
+			while(nowc<aveb)				
+			{	
+				pigin(nowc,0,i);
+				nowc++;
+				zhujuan[i].couadd();
+			}
+		}
+		for(int i=bjuan,j=0;i<100;j++,i++)
+		{
+			if(j==remo) aveo-=1; 	
+			nowc=zhujuan[i].getcount();	
+			while(nowc<aveo)				
+			{	
+				if(cc>=whitep) tp=2;
+				pigin(nowc,tp,i);
+				nowc++;
+				cc++;
+				zhujuan[i].couadd();
+			}
+		}
+}
+
+
+void out(int b,int w,int f,int t)
+{
+	if(t<=20)
+	{
+		outfile<<t<<" ";
+		outfile<<"blackp:"<<b<<" ";
+		outfile<<"whitep:"<<w<<" ";
+		outfile<<"flowerp:"<<f<<endl;
+	}
+}
+
+
+void sell()
+{
+	selln=0;
+	int nowc=0,k=0;	
+	int tp=0;
+	sellb=0;sellw=0;sellw=0;
+	for(int j=0;j<100;j++)
+	{
+
+		nowc=zhujuan[j].getcount();
+		if(zhujuan[j].head==NULL) continue;
+		pig *logo1=zhujuan[j].head;
+		pig *logo2=zhujuan[j].head;
+		for(k=0;k<nowc;k++)
+		{
+				if(logo1->oksell())
+				{
+					pig *p=logo1;
+					logo2->next=logo1->next;
+					logo1=logo1->next;
+					tp=p->gettpye();
+					if(tp==0) sellb+=1;
+					if(tp==1) sellw+=1;
+					if(tp==2) sellf+=1;
+					delete p;
+					zhujuan[j].cousub();
+					if(k==0)
+					{
+						zhujuan[j].head=logo1;
+						logo2=logo1;
+						nowc--;k--;
+					}
+				}
+				else
+				{
+					logo2=logo1;
+					logo1=logo1->next;
+				}
+		}
+		if(k<=0) zhujuan[j].head=NULL;	
+		pig *now=zhujuan[j].head;
+		for(int i=0;i<zhujuan[j].getcount();i++)
+		{
+			now->inpignum(i+1);
+			now=now->next;
+		}
+	}	
+	outfile.open("sell.text",ios::app);
+	if(!outfile)
+	{
+		cout<<"can't open sell.txt";
+		return;
+	}
+	out(sellb,sellw,sellf,selltime);
+	selltime++;
+	outfile.close();
+}
+
+
+void increas(int day1,int gday)
+{
+	int nowc=0;
+	int blackp=0,whitep=0,flowerp=0;
+	for(int i=0;i<gday;i++)
+	{
+		if((i+day1)%90==0&&(i+day1)!=0) 
+		{
+			cout<<"grewday "<<day+i<<endl; 
+			cout<<"It's time to buy and sell pig"<<endl;	
+			sell();
+			cout<<"����:";	cin>>blackp;
+			cout<<"����:";	cin>>whitep;
+			cout<<"����:";	cin>>flowerp;
+			out(blackp,whitep,flowerp,buytime);
+			buytime++;
+			ttbp+=blackp;ttop+=(whitep+flowerp);	
+			injuan(blackp,whitep,flowerp);	
+			cout<<endl<<ttbp<<" "<<ttop<<endl;
+			cout<<sellb<<" "<<sellw<<" "<<sellf<<endl;
+			cout<<"money"<<"\t"<<money<<endl;
+		}
+		for(int j=0;j<100;j++)
+		{
+			nowc=zhujuan[j].getcount();
+			pig *logo=zhujuan[j].head;
+			for(int k=0;k<nowc;k++)
+			{
+				logo->nowm();
+				logo=logo->next;
+			}
+		}	
+	}
+}
+
+
+void printall()
+{
+	int nowc=0,j=0;
+	for(int i=0;i<100;i++)
+	{
+		nowc=zhujuan[i].getcount();
+		j+=nowc;
+		if(nowc==0) continue;
+		cout<<endl<<i<<endl;
+		zhujuan[i].print(); 
+		cout<<endl;
+	}
+	cout<<endl<<j<<endl;
+} 
+
+
+void informjuan(int i)
+{
+	cout<<zhujuan[i].getcount()<<"\t"<<zhujuan[i].gettype()<<endl;
+}
+
+
+void informpig(int i,int j)
+{
+	pig *logo=zhujuan[i].head;
+	for(int k=1;k<j;k++)
+		logo=logo->next;
+	logo->print();
+}
+
+
+void searchpig(int n,int m)
+{
+	pig *logo=zhujuan[n].head;
+	for(int i=1;i<=m;i++)
+	{
+		logo=logo->next;
+	}
+	logo->print();
+}
+
+
+void statistic()
+{
+	int nowc=0;	
+	int tp=0,d=0;
+	double m=0;
+	int	pm[3][6]={0,0,0},pd[3][7]={0,0,0};
+	for(int i=0;i<100;i++)
+	{
+		nowc=zhujuan[i].getcount();
+		pig *logo=zhujuan[i].head;
+		for(int j=0;j<nowc;j++)
+		{
+			m=logo->getm();
+			tp=logo->gettpye();
+			d=logo->getday();
+			cout<<m<<" "<<tp<<" "<<d<<endl; 
+			switch(int(m/10))
+			{
+				case 2 :pm[tp][0]+=1;break;
+				case 3 :pm[tp][1]+=1;break;
+				case 4 :pm[tp][2]+=1;break;
+				case 5 :pm[tp][3]+=1;break;
+				case 6 :pm[tp][4]+=1;break;
+				default :pm[tp][5]+=1;break;				
+			}
+			switch(int(d/30))
+			{
+				case 0 :pd[tp][0]+=1;break; 
+				case 1 :pd[tp][1]+=1;break; 
+				case 2 :pd[tp][2]+=1;break; 
+				case 3 :pd[tp][3]+=1;break; 
+				case 4 :pd[tp][4]+=1;break; 
+				case 5 :pd[tp][5]+=1;break; 
+				default :pd[tp][6]+=1;break; 
+			}
+			logo=logo->next;
+		}
+	}
+	for(int i=0;i<3;i++)
+	{	
+		if(i==0) cout<<"black:";
+		if(i==1) cout<<"white:";
+		if(i==2) cout<<"flower:";
+		cout<<endl;
+		for(int j=0;j<6;j++)
+		{	
+			if(j==5) cout<<">=70:"<<"\t";
+			else cout<<(j+2)*10<<"~"<<(j+3)*10<<"\t"; 
+			cout<<pm[i][j];
+			cout<<endl;
+		}
+	}
+	for(int i=0;i<3;i++)
+	{	
+		if(i==0) cout<<"black:";
+		if(i==1) cout<<"white:";
+		if(i==2) cout<<"flower:";
+		cout<<endl;
+		for(int j=0;j<7;j++)
+		{	
+			if(j==6) cout<<">=6month:"<<"\t";
+			else cout<<j<<"month"<<"~"<<(j+1)<<"month"<<"\t"; 
+			cout<<pd[i][j];
+			cout<<endl;
+		}
+	}
+}
+
+
+void close1()
+{
+	int nowc=0;	
+	outfile.open("data.text",ios::out);
+	if(!outfile)
+	{
+		cout<<"can't open buyin.text"<<endl;
+		return;
+	}
+	outfile<<bjuan<<" "<<ojuan<<" "<<ttbp<<" "<<ttop<<" "<<day;
+	outfile.close(); 
+	outjuan.open("juan.text",ios::out);
+	outtp.open("tp.text",ios::out);
+	outm.open("m.text",ios::out);
+	outday.open("day.text",ios::out);
+	if(!outjuan||!outm||!outtp||!outday)
+	{
+		cout<<"can't open "<<endl;
+		return;
+	}
+	pig *logo=NULL;
+	for(int i=0;i<100;i++)
+	{	
+		nowc=zhujuan[i].getcount();
+		outjuan<<nowc<<endl;
+		logo=zhujuan[i].head;
+		for(int j=0;j<nowc;j++)
+		{
+			logo->out();
+			logo=logo->next;
+		}
+	}
+	outjuan.close();
+	outtp.close();
+	outday.close();
+	outm.close();
+}
+void open1()
+{
+	infile.open("data.text",ios::in);
+	if(!infile)
+	{
+		cout<<"can't open data.text"<<endl;
+		return;
+	}
+	int in;double dou;
+	infile>>in;bjuan=in;
+	infile>>in;ojuan=in;
+	infile>>in;ttbp=in;
+	infile>>in;ttop=in;
+	infile>>in;day=in;
+	infile.close();
+	injuan1.open("juan.text",ios::in);
+	intp.open("tp.text",ios::in);
+	inm.open("m.text",ios::in);
+	inday.open("day.text",ios::in);
+	if(!injuan1||!inm||!intp||!inday)
+	{
+		cout<<"can't open"<<endl;
+		return;
+	}
+	int in1,in2,in3,nowc=0,a=0,c=0;
+	double b=0;
+	pig *logo0;
+	for(int i=0;i<100;i++)
+	{
+		injuan1>>in1;
+		nowc=in1;
+		zhujuan[i].head=NULL;		cout<<nowc<<endl;
+		if(nowc==0) continue;
+		for(int j=0;j<nowc;j++)
+		{
+			intp>>in2;
+			a=in2;
+			inm>>dou;
+			b=dou;
+			inday>>in3;
+			c=in3;
+			pig *pp=new pig(a,b,c);
+			zhujuan[i].couadd();
+			pp->print();cout<<endl;
+			pp->injuannum(i);
+			pp->inpignum(j+1);
+			if(j==0) 
+			{
+				zhujuan[i].head=pp;
+				logo0=zhujuan[i].head; 
+			}
+			else
+			{	
+				logo0->next=pp;
+				logo0=pp;
+			}
+			logo0->next=NULL;
+		}
+	}
+	injuan1.close();
+	intp.close();
+	inday.close();
+	inm.close();
+}
+
+
+int main()
+{	
+		int times=1;
+		int gday=0;
+		int control=1,control1=0;
+		int blackp,whitep,flowerp;
+	int open=1;
+	cout<<"restart press 1"<<endl;
+	cout<<"continue press 0"<<endl;
+	cin>>open;
+	if(open) 
+	{
+
+		cout<<"����:";	cin>>blackp;
+		cout<<"����:";	cin>>whitep;
+		cout<<"����:";	cin>>flowerp;
+		ttbp+=blackp;ttop+=(whitep+flowerp);
+		finjuan(blackp,whitep,flowerp,zhujuan);
+		outfile.open("buyin.text",ios::out);
+		if(!outfile)
+		{
+			cout<<"can't open buyin.txt"<<endl;
+			return 0;
+		}
+		out(blackp,whitep,flowerp,buytime);
+		buytime++;
+		outfile.close();
+		cout<<"growday"<<"\t";
+		cin>>gday;
+		increas(day,gday);
+		day+=gday;
+	}
+	else
+	{
+		open1();
+	}
+	for(;control;times++)
+	{	
+		cout<<endl<<"have grown"<<day<<endl;
+		cout<<"exit press 0";
+		cout<<endl<<"continue press 1";
+		cout<<endl<<"search press 2"<<endl;
+		cin>>control;
+		if(control==0) 
+		{
+			close1();
+			return 0;
+		}
+		if(control==1) 
+		{
+			cout<<"growthday:";
+			cin>>gday;
+		}
+		if(control==2)
+		{
+			cout<<"search juan press 1"<<endl;
+			cout<<"search pig press 2"<<endl;
+			cout<<"stastic press 3"<<endl;
+			cin>>control1;
+			if(control1==1)
+			{
+				cout<<"putin juan number:";
+				int nn=0;
+				cin>>nn;
+				zhujuan[nn].print();
+				cout<<endl<<endl;
+			}
+			if(control1==2)
+			{
+				cout<<"put in pig'juannumber(0~99):";
+				int num1=0;
+				cin>>num1;
+				int nnn=zhujuan[num1].getcount();
+				cout<<"put in pig'number(1~"<<nnn<<"):";
+				int num2=0;
+				cin>>num2;
+				searchpig(num1,num2-1);				
+			}
+			if(control1==3)
+			{
+				statistic();
+			}
+			gday=0;
+		}			
+		increas(day,gday);
+		day+=gday;
+		control1=0;
+	}
+	return 0;
+}
