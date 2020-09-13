@@ -1,0 +1,1461 @@
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+#include "buypig.h"
+#include <QDebug>
+#include <QPushButton>
+#include <QString>
+#include <QLabel>
+#include <QPainter>
+using namespace std;
+#include <bits/stdc++.h>
+#include <ctime>
+#define random(a,b) (rand()%(b-a+1))+a
+
+ifstream infile,intp,inm,inday,injuan1;
+ofstream outfile,outtp,outm,outday,outjuan;
+
+int bjuan=0,ojuan=0,aveb=0,aveo=0,remb=0,remo=0;				//控制猪圈的参数
+int ttop=0,ttbp=0;
+int money=0;
+int selln=0;
+int day=0;
+int sellb=0,sellw=0,sellf=0;
+int selltime=1,buytime=0;
+int fffc=0,wwwc=0,bbbc=0;
+int ggdd1=0;
+
+class juan;
+class pig
+{
+    private:
+        int pigtype;											//0为黑猪，1为白猪，2为花猪
+        double m;
+        int growthday=0;
+        double growthm;
+        int juannum;
+        int pignum;
+    public:
+        pig *next=NULL;
+        pig(int i,double j=0,int k=0)												//构造函数确定种类和质量
+        {														//i表示猪的种类
+            pigtype=i;
+            if(j==0)
+            {
+                double a=random(200,500);							//随机获取质量
+                m=a/10;
+            }
+            else m=j;
+            growthday=k;
+        }
+        void nowm();											//计算当前重量 !!
+        bool oksell();									//猪是否可以卖
+        void injuannum(int);
+        void print();
+        int getjuannum();
+        void inpignum(int);
+        int getpignum();
+        double	getm(){return m;}
+        int gettpye(){return pigtype;}
+        int getday(){return growthday;}
+        void out();
+        ~pig()
+        {
+            if(pigtype==0)
+            {
+                money+=15;
+                ttbp-=1;
+            }
+
+            if(pigtype==1)
+            {
+                money+=6;
+                ttop-=1;
+            }
+            if(pigtype==2)
+            {
+                money+=7;
+                ttop-=1;
+            }
+            selln++;
+        }
+};
+void pig::nowm()
+{
+    double a=random(0,12);
+    growthm=a/10;
+    m+=growthm;
+    growthday+=1;
+}
+bool pig::oksell()
+{
+    if(growthday>360||m>75)
+    return 1;
+    else
+    return 0;
+}
+void pig::injuannum(int n)
+{
+    juannum=n;
+}
+int pig::getjuannum()
+{
+    return juannum;
+}
+void pig::inpignum(int n)
+{
+    pignum=n;
+}
+int pig::getpignum()
+{
+    return pignum;
+}
+void pig::print()
+{
+    cout<<m<<"\t";
+    if(pigtype==0) cout<<"black";
+    if(pigtype==1) cout<<"white";
+    if(pigtype==2) cout<<"flower";
+    cout<<"\t"<<growthday<<endl;
+}
+void pig::out()
+{
+    outtp<<pigtype<<" ";
+    outday<<growthday<<" ";
+    outm<<m<<" ";
+}
+
+
+class juan
+{
+    private:
+        int number;
+        int type;
+        int count=0;
+        int pigcount;
+    public:
+        pig *head=NULL;
+        void print();
+        int getcount();
+        int incount(int);
+        void couadd();
+        void cousub();
+        int gettype();
+        int changetype(int);
+        void intype(int i);
+};
+void juan::print()
+{
+    pig *target=this->head;
+    cout<<count<<"\t";
+    if(type==0) cout<<"black"<<endl;
+    if(type==1) cout<<"other"<<endl;
+    for(int i=0;i<count;i++)
+    {
+        target->print();
+        target=target->next;
+    }
+}
+void juan::couadd()
+{
+    count+=1;
+}
+void juan::cousub()
+{
+    count-=1;
+}
+int juan::getcount()
+{
+    return count;
+}
+int juan::incount(int c)
+{
+    count=c;
+    return count;
+}
+int juan::changetype(int i)
+{
+    type=i;
+    return type;
+}
+int juan::gettype()
+{
+    return type;
+}
+void juan::intype(int i)
+{
+    type=i;
+}
+
+juan zhujuan[100];
+
+void out(int b,int w,int f,int t)
+{
+    if(t<=20)
+    {
+        outfile<<t<<" ";
+        outfile<<"blackp:"<<b<<" ";
+        outfile<<"whitep:"<<w<<" ";
+        outfile<<"flowerp:"<<f<<endl;
+    }
+}
+
+
+void pigin(int nowc,int ty,int i,double m=0,int day=0)///////!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+{
+    if(nowc==0)
+    {
+        pig *pty1=new pig(ty,m,day);
+        pty1->injuannum(i);
+        pty1->inpignum(1);
+        pty1->next=NULL;
+        zhujuan[i].head=pty1;
+        zhujuan[i].head->next=NULL;
+    }
+    else
+    {
+        pig *pty=new pig(ty,m,day);
+        pty->next=NULL;
+        pty->injuannum(i);
+        pty->inpignum(nowc+1);
+        pig *p=zhujuan[i].head,*q=zhujuan[i].head;
+        for(int i=0;i<nowc;i++)
+        {
+            p=q;
+            q=q->next;
+        }
+        p->next=pty;
+    }
+}
+
+
+void injuan(int blackp,int whitep,int flowerp)//////!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+{
+        if(buytime==0)
+        {
+            bjuan=((blackp*100)/(blackp+whitep+flowerp));							//黑猪要多少黑猪圈
+            if(bjuan==0&&blackp!=0) bjuan=1;									//至少保证一个黑猪圈
+            ojuan=100-bjuan;													//要多少其他猪圈
+            aveb=blackp/bjuan+1;
+            remb=blackp%bjuan;
+            aveo=(whitep+flowerp)/ojuan+1;
+            remo=(whitep+flowerp)%ojuan;										//控制分配猪圈
+            buytime++;
+        }
+        outfile.open("..//buyin.text",ios::app);
+        if(!outfile)
+        {
+            cout<<"can't open buyin.txt"<<endl;
+            return;
+        }
+        out(blackp,whitep,flowerp,buytime);
+        buytime++;
+        outfile.close();
+        remb=ttbp%bjuan;
+        remo=ttop%ojuan;
+        aveb=ttbp/bjuan+1;
+        aveo=ttop/ojuan+1;
+        int nowc=0,cc=0,tp=1;
+        for(int i=0;i<bjuan;i++)
+        {
+            if(i==remb) aveb-=1;
+            nowc=zhujuan[i].getcount();
+            while(nowc<aveb)
+            {
+                pigin(nowc,0,i);
+                nowc++;
+                zhujuan[i].couadd();
+            }
+        }
+        for(int i=bjuan,j=0;i<100;j++,i++)
+        {
+            if(j==remo) aveo-=1;
+            nowc=zhujuan[i].getcount();
+            while(nowc<aveo)
+            {
+                if(cc>=whitep) tp=2;
+                pigin(nowc,tp,i);
+                nowc++;
+                cc++;
+                zhujuan[i].couadd();
+            }
+        }
+}
+
+
+void sell()
+{
+    selln=0;
+    int nowc=0,k=0;
+    int tp=0;
+    sellb=0;sellw=0;sellf=0;
+    for(int j=0;j<100;j++)
+    {
+
+        nowc=zhujuan[j].getcount();
+        if(zhujuan[j].head==NULL) continue;
+        pig *logo1=zhujuan[j].head;
+        pig *logo2=zhujuan[j].head;
+        for(k=0;k<nowc;k++)
+        {
+                if(logo1->oksell())
+                {
+                    pig *p=logo1;
+                    logo2->next=logo1->next;
+                    logo1=logo1->next;
+                    tp=p->gettpye();
+                    if(tp==0) sellb+=1;
+                    if(tp==1) sellw+=1;
+                    if(tp==2) sellf+=1;
+                    delete p;
+                    zhujuan[j].cousub();
+                    if(k==0)
+                    {
+                        zhujuan[j].head=logo1;
+                        logo2=logo1;
+                        nowc--;k--;
+                    }
+                }
+                else
+                {
+                    logo2=logo1;
+                    logo1=logo1->next;
+                }
+        }
+        if(k<=0) zhujuan[j].head=NULL;
+        pig *now=zhujuan[j].head;
+        for(int i=0;i<zhujuan[j].getcount();i++)
+        {
+            now->inpignum(i+1);
+            now=now->next;
+        }
+    }
+    outfile.open("..//sell.text",ios::app);
+    if(!outfile)
+    {
+        cout<<"can't open sell.txt";
+        return;
+    }
+    out(sellb,sellw,sellf,selltime);
+    selltime++;
+    outfile.close();
+}
+
+
+void MainWindow::increas(int day1,int gday)
+{
+    int nowc=0;
+    if(buytime==0)
+    {
+        ui->textBrowser->setText("please buy pig");
+    }
+    for(int i=0;i<gday;i++)
+    {
+        if((i+day1)%90==0&&(i+day1)!=0)
+        {
+            int ddd=i+day1;
+            QString dd;
+            dd.sprintf("growday:=%d",ddd);
+            ui->textBrowser->setText(dd);
+            ui->textBrowser->append("It's time to buy pig");
+            ui->grow->hide();
+            ui->continue1_2->show();
+            sell();
+            return;
+        }
+        for(int j=0;j<100;j++)
+        {
+            nowc=zhujuan[j].getcount();
+            pig *logo=zhujuan[j].head;
+            for(int k=0;k<nowc;k++)
+            {
+                logo->nowm();
+                logo=logo->next;
+            }
+        }
+        day++;
+        qDebug()<<day;
+    }
+}
+
+MainWindow::MainWindow(QWidget *parent) :
+    QMainWindow(parent),
+    ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+    connect(&ow,&buypig::intsignals,this,&MainWindow::recivesignals);
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+
+void MainWindow::recivesignals(int b, int w, int f)
+{
+    ttbp+=b;ttop+=(w+f);
+    injuan(b,w,f);
+    QString aa;
+    aa.sprintf("growday:=%d",day);
+    ui->textBrowser->append(aa);
+    aa.sprintf("black:%d white:%d flower:%d",b,w,f);
+
+}
+
+void MainWindow::on_start1_clicked()
+{
+    increas(0,0);
+}
+
+
+void MainWindow::on_continue1_clicked()
+{
+    infile.open("..\\data.text",ios::in);
+    if(!infile)
+    {
+        cout<<"can't open data.text"<<endl;
+        return;
+    }
+    int in;double dou;
+    infile>>in;bjuan=in;
+    infile>>in;ojuan=in;
+    infile>>in;ttbp=in;
+    infile>>in;ttop=in;
+    infile>>in;day=in;
+    infile>>in;selltime=in;
+    infile>>in;buytime=in;
+    infile.close();
+    injuan1.open("..\\juan.text",ios::in);
+    intp.open("..\\tp.text",ios::in);
+    inm.open("..\\m.text",ios::in);
+    inday.open("..\\day.text",ios::in);
+    if(!injuan1||!inm||!intp||!inday)
+    {
+        cout<<"can't open"<<endl;
+        return;
+    }
+    int in1,in2,in3,nowc=0,a=0,c=0;
+    double b=0;
+    pig *logo0;
+    for(int i=0;i<100;i++)
+    {
+        injuan1>>in1;
+        nowc=in1;
+        zhujuan[i].head=NULL;
+        if(nowc==0) continue;
+        for(int j=0;j<nowc;j++)
+        {
+            intp>>in2;
+            a=in2;
+            inm>>dou;
+            b=dou;
+            inday>>in3;
+            c=in3;
+            pig *pp=new pig(a,b,c);
+            zhujuan[i].couadd();
+            pp->injuannum(i);
+            pp->inpignum(j+1);
+            if(j==0)
+            {
+                zhujuan[i].head=pp;
+                logo0=zhujuan[i].head;
+            }
+            else
+            {
+                logo0->next=pp;
+                logo0=pp;
+            }
+            logo0->next=NULL;
+        }
+    }
+    injuan1.close();
+    intp.close();
+    inday.close();
+    inm.close();
+}
+
+void MainWindow::on_close1_clicked()
+{
+    int nowc=0;
+    outfile.open("..\\data.text",ios::out);
+    if(!outfile)
+    {
+        cout<<"can't open buyin.text"<<endl;
+        return;
+    }
+    outfile<<bjuan<<" "<<ojuan<<" "<<ttbp<<" "<<ttop<<" "<<day<<" "<<selltime<<" "<<buytime;
+    outfile.close();
+    outjuan.open("..\\juan.text",ios::out);
+    outtp.open("..\\tp.text",ios::out);
+    outm.open("..\\m.text",ios::out);
+    outday.open("..\\day.text",ios::out);
+    if(!outjuan||!outm||!outtp||!outday)
+    {
+        cout<<"can't open "<<endl;
+        return;
+    }
+    pig *logo=NULL;
+    for(int i=0;i<100;i++)
+    {
+        nowc=zhujuan[i].getcount();
+        outjuan<<nowc<<endl;
+        logo=zhujuan[i].head;
+        for(int j=0;j<nowc;j++)
+        {
+            logo->out();
+            logo=logo->next;
+        }
+    }
+    outjuan.close();
+    outtp.close();
+    outday.close();
+    outm.close();
+
+}
+
+void MainWindow::on_grow_clicked()
+{
+    QString str;
+    str=ui->lineEdit->text();
+    int gd=0;
+    gd=str.toInt();
+    ggdd1+=gd;
+    increas(day,gd);
+}
+
+void MainWindow::on_pushButton_clicked()
+{
+     ow.show();
+}
+
+
+void MainWindow::on_statistics_clicked()
+{
+    int nowc=0;
+    int tp=0,d=0;
+    double m=0;
+    int	pm[3][6]={0,0,0},pd[3][7]={0,0,0};
+    for(int i=0;i<100;i++)
+    {
+        nowc=zhujuan[i].getcount();
+        pig *logo=zhujuan[i].head;
+        for(int j=0;j<nowc;j++)
+        {
+            m=logo->getm();
+            tp=logo->gettpye();
+            d=logo->getday();
+            cout<<m<<" "<<tp<<" "<<d<<endl;
+            switch(int(m/10))
+            {
+                case 2 :pm[tp][0]+=1;break;
+                case 3 :pm[tp][1]+=1;break;
+                case 4 :pm[tp][2]+=1;break;
+                case 5 :pm[tp][3]+=1;break;
+                case 6 :pm[tp][4]+=1;break;
+                default :pm[tp][5]+=1;break;
+            }
+            switch(int(d/30))
+            {
+                case 0 :pd[tp][0]+=1;break;
+                case 1 :pd[tp][1]+=1;break;
+                case 2 :pd[tp][2]+=1;break;
+                case 3 :pd[tp][3]+=1;break;
+                case 4 :pd[tp][4]+=1;break;
+                case 5 :pd[tp][5]+=1;break;
+                default :pd[tp][6]+=1;break;
+            }
+            logo=logo->next;
+        }
+    }
+    QString temp;
+    for(int i=0;i<3;i++)
+    {
+        if(i==0) ui->ooo->setText("black:");
+        if(i==1) ui->ooo->append("white:");
+        if(i==2) ui->ooo->append("flower:");
+        for(int j=0;j<6;j++)
+        {
+            if(j==5)
+            {
+                temp.sprintf(">=%d",70);
+                ui->ooo->append(temp);
+            }
+            else
+            {
+                temp.sprintf("%d~%d",(j+2)*10,(j+3)*10);
+                ui->ooo->append(temp);
+            }
+            temp.sprintf("%d",pm[i][j]);
+            ui->ooo->append(temp);
+        }
+    }
+    for(int i=0;i<3;i++)
+    {
+        if(i==0) ui->ooo->append("black");
+        if(i==1) ui->ooo->append("white");
+        if(i==2) ui->ooo->append("flower");
+        for(int j=0;j<7;j++)
+        {
+            if(j==6)
+            {
+                ui->ooo->append(">=6month:");
+            }
+            else
+            {
+                temp.sprintf("%dmonth~%dmonth",j,j+1);
+                ui->ooo->append(temp);
+            }
+            temp.sprintf("%d",pd[i][j]);
+            ui->ooo->append(temp);
+        }
+    }
+}
+
+void MainWindow::on_searchpig_clicked()
+{
+    int n=0,m=0;
+    QString cc;
+    cc=ui->juannum->text();
+    n=cc.toInt();
+    cc=ui->pignum->text();
+    m=cc.toInt();
+        pig *logo=zhujuan[n].head;
+        for(int i=1;i<=m;i++)
+        {
+            logo=logo->next;
+        }
+    int aa=0,bb=0,dd=0;
+    aa=logo->gettpye();
+    if(aa==0)    ui->ooo->setText("type:black");
+    if(aa==1)    ui->ooo->setText("type:white");
+    if(aa==2)    ui->ooo->setText("type:flower");
+    bb=logo->getm();
+    cc.sprintf("weight:%d",bb);
+    ui->ooo->append(cc);
+    dd=logo->getday();
+    qDebug()<<logo->getday();
+    cc.sprintf("growthday:%d",dd);
+    ui->ooo->append(cc);
+}
+
+void MainWindow::on_searchjuan_clicked()
+{
+    QString str;
+    str=ui->juann->text();
+    int i;
+    i=str.toInt();
+    int t=0,n=0;
+    i=zhujuan[i].gettype();
+    n=zhujuan[i].getcount();
+    QString ss;
+    ss.sprintf("type:%d\ncount:%d",t,n);
+    ui->ooo->setText(ss);
+}
+
+void MainWindow::on_continue1_2_clicked()
+{
+    int dd=0,nowc=0;
+    dd=ggdd1-day;
+    if(dd==0)
+    {
+        ui->continue1_2->hide();
+        ui->grow->show();
+    }
+
+    if(dd>=0)
+    {
+        for(int j=0;j<100;j++)
+        {
+            nowc=zhujuan[j].getcount();
+            pig *logo=zhujuan[j].head;
+            for(int k=0;k<nowc;k++)
+            {
+                logo->nowm();
+                logo=logo->next;
+            }
+        }
+        day++;dd-=1;
+        increas(day,dd);
+    } dd=ggdd1-day;qDebug()<<day<<dd;
+    QString str;
+    str.sprintf("growday:=%d",day);
+    ui->textBrowser->append(str);
+    if(dd==0)
+    {
+        ui->continue1_2->hide();
+        ui->grow->show();
+    }
+}
+void MainWindow::paintEvent(QPaintEvent *)//设置背景图
+{
+    QPainter p;
+    p.begin(this);
+    p.drawPixmap(rect(),QPixmap("://image/bb.jpg"));
+    p.end();
+}
+
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
+#include "buypig.h"
+
+#include <QMainWindow>
+#include <QPushButton>
+#include <QLineEdit>
+#include <QTextBrowser>
+namespace Ui {
+class MainWindow;
+}
+
+class MainWindow : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    explicit MainWindow(QWidget *parent = 0);
+    ~MainWindow();
+
+    void recivesignals(int b, int w, int f);
+    void increas(int ,int );
+
+private slots:
+    void on_start1_clicked();
+
+    void on_close1_clicked();
+
+    void on_pushButton_clicked();
+
+    void on_grow_clicked();
+
+    void on_searchpig_clicked();
+
+    void on_statistics_clicked();
+
+    void on_searchjuan_clicked();
+
+    void on_continue1_2_clicked();
+
+    void on_continue1_clicked();
+
+private:
+    Ui::MainWindow *ui;
+    buypig ow;
+protected:
+    void paintEvent(QPaintEvent *);
+};
+
+#endif // MAINWINDOW_H
+
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>429</width>
+    <height>619</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <widget class="QTextBrowser" name="textBrowser">
+    <property name="geometry">
+     <rect>
+      <x>130</x>
+      <y>50</y>
+      <width>141</width>
+      <height>161</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QWidget" name="layoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>60</y>
+      <width>95</width>
+      <height>100</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QPushButton" name="start1">
+       <property name="text">
+        <string>start</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="continue1">
+       <property name="text">
+        <string>load</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="close1">
+       <property name="text">
+        <string>close</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="layoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>300</x>
+      <y>80</y>
+      <width>101</width>
+      <height>111</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QPushButton" name="pushButton">
+       <property name="text">
+        <string>buypig</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="lineEdit"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="grow">
+       <property name="text">
+        <string>grow</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QFrame" name="frame">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>240</y>
+      <width>120</width>
+      <height>100</height>
+     </rect>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::StyledPanel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Raised</enum>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_3">
+     <item>
+      <widget class="QLineEdit" name="juannum"/>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="pignum"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="searchpig">
+       <property name="text">
+        <string>searchpig</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QFrame" name="frame_2">
+    <property name="geometry">
+     <rect>
+      <x>150</x>
+      <y>240</y>
+      <width>120</width>
+      <height>100</height>
+     </rect>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::StyledPanel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Raised</enum>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_4">
+     <item>
+      <widget class="QLineEdit" name="juann"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="searchjuan">
+       <property name="text">
+        <string>searchjuan</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QFrame" name="frame_3">
+    <property name="geometry">
+     <rect>
+      <x>280</x>
+      <y>240</y>
+      <width>120</width>
+      <height>100</height>
+     </rect>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::StyledPanel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Raised</enum>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_5">
+     <item>
+      <widget class="QPushButton" name="statistics">
+       <property name="text">
+        <string>statistics</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QTextBrowser" name="ooo">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>350</y>
+      <width>381</width>
+      <height>192</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="continue1_2">
+    <property name="geometry">
+     <rect>
+      <x>300</x>
+      <y>50</y>
+      <width>101</width>
+      <height>28</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>continue</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>429</width>
+     <height>26</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QToolBar" name="mainToolBar">
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>close1</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>57</x>
+     <y>184</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>214</x>
+     <y>309</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
+
+#ifndef SEARCH1_H
+#define SEARCH1_H
+#include <QMainWindow>
+
+class search1
+{
+public:
+    search1();
+};
+
+#endif // SEARCH1_H
+
+#-------------------------------------------------
+#
+# Project created by QtCreator 2020-09-11T10:01:29
+#
+#-------------------------------------------------
+
+QT       += core gui
+
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+
+TARGET = untitled2
+TEMPLATE = app
+
+# The following define makes your compiler emit warnings if you use
+# any feature of Qt which has been marked as deprecated (the exact warnings
+# depend on your compiler). Please consult the documentation of the
+# deprecated API in order to know how to port your code away from it.
+DEFINES += QT_DEPRECATED_WARNINGS
+
+# You can also make your code fail to compile if you use deprecated APIs.
+# In order to do so, uncomment the following line.
+# You can also select to disable deprecated APIs only up to a certain version of Qt.
+#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+
+SOURCES += \
+        main.cpp \
+        mainwindow.cpp \
+    buypig.cpp
+
+HEADERS += \
+        mainwindow.h \
+    buypig.h
+
+FORMS += \
+        mainwindow.ui
+
+RESOURCES += \
+    aaa.qrc
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE QtCreatorProject>
+<!-- Written by QtCreator 4.4.1, 2020-09-13T15:26:40. -->
+<qtcreator>
+ <data>
+  <variable>EnvironmentId</variable>
+  <value type="QByteArray">{e081fbfd-ab8b-41ad-9d50-9046d3d88034}</value>
+ </data>
+ <data>
+  <variable>ProjectExplorer.Project.ActiveTarget</variable>
+  <value type="int">0</value>
+ </data>
+ <data>
+  <variable>ProjectExplorer.Project.EditorSettings</variable>
+  <valuemap type="QVariantMap">
+   <value type="bool" key="EditorConfiguration.AutoIndent">true</value>
+   <value type="bool" key="EditorConfiguration.AutoSpacesForTabs">false</value>
+   <value type="bool" key="EditorConfiguration.CamelCaseNavigation">true</value>
+   <valuemap type="QVariantMap" key="EditorConfiguration.CodeStyle.0">
+    <value type="QString" key="language">Cpp</value>
+    <valuemap type="QVariantMap" key="value">
+     <value type="QByteArray" key="CurrentPreferences">CppGlobal</value>
+    </valuemap>
+   </valuemap>
+   <valuemap type="QVariantMap" key="EditorConfiguration.CodeStyle.1">
+    <value type="QString" key="language">QmlJS</value>
+    <valuemap type="QVariantMap" key="value">
+     <value type="QByteArray" key="CurrentPreferences">QmlJSGlobal</value>
+    </valuemap>
+   </valuemap>
+   <value type="int" key="EditorConfiguration.CodeStyle.Count">2</value>
+   <value type="QByteArray" key="EditorConfiguration.Codec">UTF-8</value>
+   <value type="bool" key="EditorConfiguration.ConstrainTooltips">false</value>
+   <value type="int" key="EditorConfiguration.IndentSize">4</value>
+   <value type="bool" key="EditorConfiguration.KeyboardTooltips">false</value>
+   <value type="int" key="EditorConfiguration.MarginColumn">80</value>
+   <value type="bool" key="EditorConfiguration.MouseHiding">true</value>
+   <value type="bool" key="EditorConfiguration.MouseNavigation">true</value>
+   <value type="int" key="EditorConfiguration.PaddingMode">1</value>
+   <value type="bool" key="EditorConfiguration.ScrollWheelZooming">true</value>
+   <value type="bool" key="EditorConfiguration.ShowMargin">false</value>
+   <value type="int" key="EditorConfiguration.SmartBackspaceBehavior">0</value>
+   <value type="bool" key="EditorConfiguration.SmartSelectionChanging">true</value>
+   <value type="bool" key="EditorConfiguration.SpacesForTabs">true</value>
+   <value type="int" key="EditorConfiguration.TabKeyBehavior">0</value>
+   <value type="int" key="EditorConfiguration.TabSize">8</value>
+   <value type="bool" key="EditorConfiguration.UseGlobal">true</value>
+   <value type="int" key="EditorConfiguration.Utf8BomBehavior">1</value>
+   <value type="bool" key="EditorConfiguration.addFinalNewLine">true</value>
+   <value type="bool" key="EditorConfiguration.cleanIndentation">true</value>
+   <value type="bool" key="EditorConfiguration.cleanWhitespace">true</value>
+   <value type="bool" key="EditorConfiguration.inEntireDocument">false</value>
+  </valuemap>
+ </data>
+ <data>
+  <variable>ProjectExplorer.Project.PluginSettings</variable>
+  <valuemap type="QVariantMap"/>
+ </data>
+ <data>
+  <variable>ProjectExplorer.Project.Target.0</variable>
+  <valuemap type="QVariantMap">
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Desktop Qt 5.9.2 MinGW 32bit</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Desktop Qt 5.9.2 MinGW 32bit</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">qt.592.win32_mingw53_kit</value>
+   <value type="int" key="ProjectExplorer.Target.ActiveBuildConfiguration">0</value>
+   <value type="int" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>
+   <value type="int" key="ProjectExplorer.Target.ActiveRunConfiguration">0</value>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.0">
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">E:/qtcode/build-untitled2-Desktop_Qt_5_9_2_MinGW_32bit-Debug</value>
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">qmake</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">QtProjectManager.QMakeBuildStep</value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.LinkQmlDebuggingLibrary">true</value>
+      <value type="QString" key="QtProjectManager.QMakeBuildStep.QMakeArguments"></value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.QMakeForced">false</value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.SeparateDebugInfo">false</value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.UseQtQuickCompiler">false</value>
+     </valuemap>
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.1">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Make</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+      <valuelist type="QVariantList" key="Qt4ProjectManager.MakeStep.AutomaticallyAddedMakeArguments"/>
+      <value type="bool" key="Qt4ProjectManager.MakeStep.Clean">false</value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeArguments"></value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeCommand"></value>
+     </valuemap>
+     <value type="int" key="ProjectExplorer.BuildStepList.StepsCount">2</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">构建</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Build</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.1">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Make</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+      <valuelist type="QVariantList" key="Qt4ProjectManager.MakeStep.AutomaticallyAddedMakeArguments"/>
+      <value type="bool" key="Qt4ProjectManager.MakeStep.Clean">true</value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeArguments">clean</value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeCommand"></value>
+     </valuemap>
+     <value type="int" key="ProjectExplorer.BuildStepList.StepsCount">1</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">清理</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Clean</value>
+    </valuemap>
+    <value type="int" key="ProjectExplorer.BuildConfiguration.BuildStepListCount">2</value>
+    <value type="bool" key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment">false</value>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges"/>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Debug</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4BuildConfiguration</value>
+    <value type="int" key="Qt4ProjectManager.Qt4BuildConfiguration.BuildConfiguration">2</value>
+    <value type="bool" key="Qt4ProjectManager.Qt4BuildConfiguration.UseShadowBuild">true</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.1">
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">E:/qtcode/build-untitled2-Desktop_Qt_5_9_2_MinGW_32bit-Release</value>
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">qmake</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">QtProjectManager.QMakeBuildStep</value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.LinkQmlDebuggingLibrary">false</value>
+      <value type="QString" key="QtProjectManager.QMakeBuildStep.QMakeArguments"></value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.QMakeForced">false</value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.SeparateDebugInfo">false</value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.UseQtQuickCompiler">false</value>
+     </valuemap>
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.1">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Make</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+      <valuelist type="QVariantList" key="Qt4ProjectManager.MakeStep.AutomaticallyAddedMakeArguments"/>
+      <value type="bool" key="Qt4ProjectManager.MakeStep.Clean">false</value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeArguments"></value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeCommand"></value>
+     </valuemap>
+     <value type="int" key="ProjectExplorer.BuildStepList.StepsCount">2</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">构建</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Build</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.1">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Make</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+      <valuelist type="QVariantList" key="Qt4ProjectManager.MakeStep.AutomaticallyAddedMakeArguments"/>
+      <value type="bool" key="Qt4ProjectManager.MakeStep.Clean">true</value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeArguments">clean</value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeCommand"></value>
+     </valuemap>
+     <value type="int" key="ProjectExplorer.BuildStepList.StepsCount">1</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">清理</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Clean</value>
+    </valuemap>
+    <value type="int" key="ProjectExplorer.BuildConfiguration.BuildStepListCount">2</value>
+    <value type="bool" key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment">false</value>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges"/>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Release</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4BuildConfiguration</value>
+    <value type="int" key="Qt4ProjectManager.Qt4BuildConfiguration.BuildConfiguration">0</value>
+    <value type="bool" key="Qt4ProjectManager.Qt4BuildConfiguration.UseShadowBuild">true</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.2">
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">E:/qtcode/build-untitled2-Desktop_Qt_5_9_2_MinGW_32bit-Profile</value>
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">qmake</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">QtProjectManager.QMakeBuildStep</value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.LinkQmlDebuggingLibrary">true</value>
+      <value type="QString" key="QtProjectManager.QMakeBuildStep.QMakeArguments"></value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.QMakeForced">false</value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.SeparateDebugInfo">true</value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.UseQtQuickCompiler">false</value>
+     </valuemap>
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.1">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Make</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+      <valuelist type="QVariantList" key="Qt4ProjectManager.MakeStep.AutomaticallyAddedMakeArguments"/>
+      <value type="bool" key="Qt4ProjectManager.MakeStep.Clean">false</value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeArguments"></value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeCommand"></value>
+     </valuemap>
+     <value type="int" key="ProjectExplorer.BuildStepList.StepsCount">2</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">构建</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Build</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.1">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Make</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+      <valuelist type="QVariantList" key="Qt4ProjectManager.MakeStep.AutomaticallyAddedMakeArguments"/>
+      <value type="bool" key="Qt4ProjectManager.MakeStep.Clean">true</value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeArguments">clean</value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeCommand"></value>
+     </valuemap>
+     <value type="int" key="ProjectExplorer.BuildStepList.StepsCount">1</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">清理</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Clean</value>
+    </valuemap>
+    <value type="int" key="ProjectExplorer.BuildConfiguration.BuildStepListCount">2</value>
+    <value type="bool" key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment">false</value>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges"/>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Profile</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4BuildConfiguration</value>
+    <value type="int" key="Qt4ProjectManager.Qt4BuildConfiguration.BuildConfiguration">0</value>
+    <value type="bool" key="Qt4ProjectManager.Qt4BuildConfiguration.UseShadowBuild">true</value>
+   </valuemap>
+   <value type="int" key="ProjectExplorer.Target.BuildConfigurationCount">3</value>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.DeployConfiguration.0">
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
+     <value type="int" key="ProjectExplorer.BuildStepList.StepsCount">0</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">部署</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Deploy</value>
+    </valuemap>
+    <value type="int" key="ProjectExplorer.BuildConfiguration.BuildStepListCount">1</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">在本地部署</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.DefaultDeployConfiguration</value>
+   </valuemap>
+   <value type="int" key="ProjectExplorer.Target.DeployConfigurationCount">1</value>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.PluginSettings"/>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.0">
+    <value type="bool" key="Analyzer.QmlProfiler.AggregateTraces">false</value>
+    <value type="bool" key="Analyzer.QmlProfiler.FlushEnabled">false</value>
+    <value type="uint" key="Analyzer.QmlProfiler.FlushInterval">1000</value>
+    <value type="QString" key="Analyzer.QmlProfiler.LastTraceFile"></value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="Analyzer.Valgrind.AddedSuppressionFiles"/>
+    <value type="bool" key="Analyzer.Valgrind.Callgrind.CollectBusEvents">false</value>
+    <value type="bool" key="Analyzer.Valgrind.Callgrind.CollectSystime">false</value>
+    <value type="bool" key="Analyzer.Valgrind.Callgrind.EnableBranchSim">false</value>
+    <value type="bool" key="Analyzer.Valgrind.Callgrind.EnableCacheSim">false</value>
+    <value type="bool" key="Analyzer.Valgrind.Callgrind.EnableEventToolTips">true</value>
+    <value type="double" key="Analyzer.Valgrind.Callgrind.MinimumCostRatio">0.01</value>
+    <value type="double" key="Analyzer.Valgrind.Callgrind.VisualisationMinimumCostRatio">10</value>
+    <value type="bool" key="Analyzer.Valgrind.FilterExternalIssues">true</value>
+    <value type="int" key="Analyzer.Valgrind.LeakCheckOnFinish">1</value>
+    <value type="int" key="Analyzer.Valgrind.NumCallers">25</value>
+    <valuelist type="QVariantList" key="Analyzer.Valgrind.RemovedSuppressionFiles"/>
+    <value type="int" key="Analyzer.Valgrind.SelfModifyingCodeDetection">1</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.Valgrind.ShowReachable">false</value>
+    <value type="bool" key="Analyzer.Valgrind.TrackOrigins">true</value>
+    <value type="QString" key="Analyzer.Valgrind.ValgrindExecutable">valgrind</value>
+    <valuelist type="QVariantList" key="Analyzer.Valgrind.VisibleErrorKinds">
+     <value type="int">0</value>
+     <value type="int">1</value>
+     <value type="int">2</value>
+     <value type="int">3</value>
+     <value type="int">4</value>
+     <value type="int">5</value>
+     <value type="int">6</value>
+     <value type="int">7</value>
+     <value type="int">8</value>
+     <value type="int">9</value>
+     <value type="int">10</value>
+     <value type="int">11</value>
+     <value type="int">12</value>
+     <value type="int">13</value>
+     <value type="int">14</value>
+    </valuelist>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">untitled2</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:E:/qtcode/untitled2/untitled2.pro</value>
+    <value type="bool" key="QmakeProjectManager.QmakeRunConfiguration.UseLibrarySearchPath">true</value>
+    <value type="QString" key="Qt4ProjectManager.Qt4RunConfiguration.CommandLineArguments"></value>
+    <value type="QString" key="Qt4ProjectManager.Qt4RunConfiguration.ProFile">untitled2.pro</value>
+    <value type="bool" key="Qt4ProjectManager.Qt4RunConfiguration.UseDyldImageSuffix">false</value>
+    <value type="QString" key="Qt4ProjectManager.Qt4RunConfiguration.UserWorkingDirectory"></value>
+    <value type="QString" key="Qt4ProjectManager.Qt4RunConfiguration.UserWorkingDirectory.default">E:/qtcode/build-untitled2-Desktop_Qt_5_9_2_MinGW_32bit-Debug</value>
+    <value type="uint" key="RunConfiguration.QmlDebugServerPort">3768</value>
+    <value type="bool" key="RunConfiguration.UseCppDebugger">false</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseMultiProcess">false</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebugger">false</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+   </valuemap>
+   <value type="int" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
+  </valuemap>
+ </data>
+ <data>
+  <variable>ProjectExplorer.Project.TargetCount</variable>
+  <value type="int">1</value>
+ </data>
+ <data>
+  <variable>ProjectExplorer.Project.Updater.FileVersion</variable>
+  <value type="int">18</value>
+ </data>
+ <data>
+  <variable>Version</variable>
+  <value type="int">18</value>
+ </data>
+</qtcreator>
+
+<RCC>
+    <qresource prefix="/">
+        <file>image/bb.jpg</file>
+    </qresource>
+</RCC>
+
+#include "buypig.h"
+#include <QPushButton>
+#include <QLineEdit>
+#include <QString>
+#include <QDebug>
+int bc=0,wc=0,fc=0;
+buypig::buypig(QWidget *parent) : QMainWindow(parent)
+{
+    setWindowTitle("buypig");
+    resize(500,600);
+    black.setParent(this);
+    black.setText("black:");
+    black.resize(80,80);
+    black.move(20,20);
+    white.setParent(this);
+    white.setText("white:");
+    white.resize(80,80);
+    white.move(20,120);
+    flower.setParent(this);
+    flower.setText("flower:");
+    flower.resize(80,80);
+    flower.move(20,220);
+    black1.setParent(this);
+    black1.resize(200,80);
+    black1.move(120,20);
+    white1.setParent(this);
+    white1.resize(200,80);
+    white1.move(120,120);
+    flower1.setParent(this);
+    flower1.resize(200,80);
+    flower1.move(120,220);
+    backk.setParent(this);
+    backk.setText("back");
+    backk.resize(200,80);
+    backk.move(120,320);
+    connect(&backk,&QPushButton::pressed,this,&buypig::backk1);
+    connect(&backk,&QPushButton::released,this,&buypig::sendd);
+    connect(&backk,&QPushButton::released,this,&buypig::close);
+}
+
+void buypig::backk1()
+{
+    QString bb = black1.text();
+    bc=bb.toInt();
+    QString wb = white1.text();
+    wc=wb.toInt();
+    QString fb = flower1.text();
+    fc=fb.toInt();
+}
+void buypig::sendd()
+{
+    emit intsignals(bc,wc,fc);
+}
+
+#ifndef BUYPIG_H
+#define BUYPIG_H
+
+#include <QMainWindow>
+#include <QPushButton>
+#include <QLineEdit>
+
+class buypig : public QMainWindow
+{
+    Q_OBJECT
+public:
+    explicit buypig(QWidget *parent = nullptr);
+    void backk1();
+    void sendd();
+
+signals:
+    void intsignals(int b,int w,int f);
+
+public slots:
+
+
+private:
+    QPushButton black;
+    QPushButton white;
+    QPushButton flower;
+    QPushButton backk;
+    QLineEdit black1;
+    QLineEdit white1;
+    QLineEdit flower1;
+
+};
+
+#endif // BUYPIG_H
+
+
+#include "mainwindow.h"
+#include <QApplication>
+
+int main(int argc, char *argv[])
+{
+    QApplication a(argc, argv);
+    MainWindow w;
+    w.show();
+
+    return a.exec();
+}
